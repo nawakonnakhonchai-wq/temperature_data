@@ -1,9 +1,12 @@
 name: Update Temperature Data
 
 on:
-  schedule:
-    - cron: "0 * * * *"  # ทำงานทุกชั่วโมง (นาทีที่ 0)
-  workflow_dispatch:      # ให้สามารถกดรันด้วยมือได้ผ่านหน้า GitHub Actions
+  # รองรับการกดรันด้วยมือผ่านหน้าเว็บ GitHub
+  workflow_dispatch:
+  
+  # รองรับการรับสัญญาณ POST request จาก cron-job.org
+  repository_dispatch:
+    types: [run-update]
 
 jobs:
   update-data:
@@ -38,11 +41,10 @@ jobs:
             git add temperature_data.geojson
             
             # ตรวจสอบว่ามีการเปลี่ยนแปลงจริงหรือไม่
-            # ถ้าไม่มีการเปลี่ยนแปลง (git diff --staged --quiet) จะไม่ทำการ commit ให้
             if git diff --staged --quiet; then
               echo "No changes detected in temperature_data.geojson."
             else
-              git commit -m "Auto-update: Refresh temperature data"
+              git commit -m "Auto-update: Refresh temperature data via External Trigger"
               git push
               echo "Changes pushed successfully."
             fi
