@@ -2,12 +2,15 @@ name: Update Temperature Data
 
 on:
   schedule:
-    - cron: "0 * * * *"  # ทำงานทุกชั่วโมง
-  workflow_dispatch:      # กดรันเองด้วยมือได้
+    - cron: "0 * * * *"  # ทำงานทุกชั่วโมง (นาทีที่ 0)
+  workflow_dispatch:      # ให้สามารถกดรันด้วยมือได้ผ่านหน้า GitHub Actions
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # อนุญาตให้ workflow มีสิทธิ์เขียนลงใน repository
+      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -25,8 +28,25 @@ jobs:
 
       - name: Commit and push changes
         run: |
+          # ตั้งค่าข้อมูลผู้ใช้งาน Git สำหรับการ Commit
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add temperature_data.geojson
-          git commit -m "Update GeoJSON data" || exit 0
-          git push
+          
+          # ตรวจสอบว่าไฟล์ถูกสร้างขึ้นมาจริงหรือไม่
+          if [ -f "temperature_data.geojson" ]; then
+            # นำไฟล์เข้าสู่ Staging Area
+            git add temperature_data.geojson
+            
+            # ตรวจสอบว่ามีการเปลี่ยนแปลงจริงหรือไม่
+            # ถ้าไม่มีการเปลี่ยนแปลง (git diff --staged --quiet) จะไม่ทำการ commit ให้
+            if git diff --staged --quiet; then
+              echo "No changes detected in temperature_data.geojson."
+            else
+              git commit -m "Auto-update: Refresh temperature data"
+              git push
+              echo "Changes pushed successfully."
+            fi
+          else
+            echo "Error: temperature_data.geojson file not found!"
+            exit 1
+          fi
